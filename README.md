@@ -1,3 +1,5 @@
+![Form Studio plugin](assets/form-studio-banner.jpg)
+
 # Style Dynamics forms
 
 A Codex skill for restyling HTML exported from **Dynamics 365 Customer Insights - Journeys** and returning the complete HTML to paste back into the same form.
@@ -25,6 +27,7 @@ The source-comparison checker detects changed functional attributes/ownership, a
 ```text
 SKILL.md                       Active workflow and constraints
 agents/openai.yaml             Discovery/UI metadata
+assets/                        Plugin icon and README banner
 references/
   html-contract.md             Preserve generated HTML and behavior
   styling.md                   Scoped CSS, fonts, mobile, accessibility

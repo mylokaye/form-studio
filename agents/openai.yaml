@@ -1,4 +1,6 @@
 interface:
   display_name: "Style Dynamics Forms"
   short_description: "Restyle exported Dynamics form HTML"
+  icon_small: "./assets/form-studio-icon.png"
+  icon_large: "./assets/form-studio-icon.png"
   default_prompt: "Use $d365-customer-insights-forms to style my exported Dynamics form HTML, preserve its functionality, and return the complete HTML to paste back."
