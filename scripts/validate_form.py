@@ -11,6 +11,7 @@ import argparse
 import json
 import re
 import sys
+from collections import Counter
 from dataclasses import asdict, dataclass
 from html.parser import HTMLParser
 from pathlib import Path
@@ -57,6 +58,7 @@ class Node:
     attrs: dict[str, str]
     parent: int | None
     line: int
+    text: str = ""
 
 
 class Inspector(HTMLParser):
@@ -65,10 +67,16 @@ class Inspector(HTMLParser):
         self.nodes: list[Node] = []
         self.stack: list[int] = []
         self.has_doctype = False
+        self.doctype = ""
 
     def handle_decl(self, decl: str) -> None:
         if decl.lower().startswith("doctype"):
             self.has_doctype = True
+            self.doctype = decl
+
+    def handle_data(self, data: str) -> None:
+        for index in self.stack:
+            self.nodes[index].text += data
 
     def handle_starttag(
         self, tag: str, attrs: list[tuple[str, str | None]]
@@ -197,7 +205,7 @@ def common_findings(inspector: Inspector, source: str) -> list[Finding]:
             if target not in control_ids:
                 findings.append(
                     Finding(
-                        "warning",
+                        "error",
                         "label-target",
                         f"Label target {target!r} does not match a control ID.",
                         node.line,
@@ -281,6 +289,33 @@ def validate_native(inspector: Inspector, source: str) -> list[Finding]:
         if node.attrs.get("data-container", "").lower() == "true"
     ]
 
+    for index in [*layout_nodes, *sections, *containers]:
+        node = inspector.nodes[index]
+        if node.tag != "div":
+            findings.append(Finding(
+                "error", "div-layout",
+                "Layout, section, and container regions must use div elements. Enable the table-less layout in Dynamics and export again.",
+                node.line,
+            ))
+    for index, node in enumerate(inspector.nodes):
+        if node.tag == "table" and (
+            is_descendant(inspector, form_index, index)
+            or any(child.attrs.get("data-editorblocktype") for _, child in descendants(inspector, index))
+        ):
+            findings.append(Finding(
+                "error", "table-layout",
+                "A table contains the form or Designer blocks. Export a div-based form instead of using a table for form layout.",
+                node.line,
+            ))
+
+    for index in containers:
+        if inspector.nodes[index].parent not in sections:
+            findings.append(Finding(
+                "error", "container-parent",
+                "A data-container region must be a direct child of a data-section region.",
+                inspector.nodes[index].line,
+            ))
+
     for section_index in sections:
         section = inspector.nodes[section_index]
         if layout_nodes and not any(
@@ -339,6 +374,39 @@ def validate_native(inspector: Inspector, source: str) -> list[Finding]:
         for index, node in form_nodes
         if node.attrs.get("data-targetproperty")
     ]
+    mappings = Counter(
+        (node.attrs.get("data-targetaudience", ""), node.attrs["data-targetproperty"])
+        for _, node in mapped_blocks
+    )
+    for (_, target), count in mappings.items():
+        if count > 1:
+            findings.append(Finding(
+                "error", "duplicate-field",
+                f"Mapped field {target!r} occurs in {count} blocks for the same audience.",
+            ))
+
+    # Unmapped controls use the same generated field-block types as mapped fields.
+    # This recognizes their shape; only the target environment proves their schema.
+    field_blocks = [
+        (index, node) for index, node in form_nodes
+        if node.attrs.get("data-editorblocktype", "").lower().endswith("formfield")
+        or node.attrs.get("data-targetproperty")
+    ]
+    unmapped_names: Counter[str] = Counter()
+    for index, block in field_blocks:
+        names = {
+            node.attrs["name"] for _, node in descendants(inspector, index)
+            if node.tag in {"input", "select", "textarea"} and node.attrs.get("name")
+        }
+        if not block.attrs.get("data-targetproperty"):
+            unmapped_names.update(names)
+        if not any(parent in containers for parent in ancestors(inspector, index)):
+            findings.append(Finding("error", "field-container",
+                "A field block must remain inside a div container.", block.line))
+    for name, count in unmapped_names.items():
+        if count > 1:
+            findings.append(Finding("error", "duplicate-field",
+                f"Unmapped field {name!r} occurs in {count} field blocks."))
     if not mapped_blocks:
         findings.append(
             Finding(
@@ -369,8 +437,8 @@ def validate_native(inspector: Inspector, source: str) -> list[Finding]:
         if not any(control.attrs.get("name") == target for control in block_controls):
             findings.append(
                 Finding(
-                    "warning",
-                    "mapped-name",
+                        "error",
+                        "mapped-name",
                     f"Mapped block {target!r} has no descendant control with the same name.",
                     block.line,
                 )
@@ -398,16 +466,18 @@ def validate_native(inspector: Inspector, source: str) -> list[Finding]:
         }:
             continue
         if any(
-            inspector.nodes[parent].attrs.get("data-editorblocktype")
+            inspector.nodes[parent].attrs.get("data-targetproperty")
+            or inspector.nodes[parent].attrs.get("data-editorblocktype", "").lower().endswith("formfield")
+            or inspector.nodes[parent].attrs.get("data-editorblocktype", "").lower() in {"consent", "topic", "captcha", "recaptcha"}
             for parent in ancestors(inspector, control_index)
             if is_descendant(inspector, parent, form_index) or parent == form_index
         ):
             continue
         findings.append(
             Finding(
-                "warning",
+                "error",
                 "unmanaged-control",
-                f"Control {control.attrs.get('name') or control.tag!r} is not inside a Designer block and may not be processed.",
+                f"Control {control.attrs.get('name') or control.tag!r} is not inside a generated field, consent, or CAPTCHA block.",
                 control.line,
             )
         )
@@ -447,6 +517,11 @@ def validate_native(inspector: Inspector, source: str) -> list[Finding]:
                 form.line,
             )
         )
+    for index, node in form_nodes:
+        if node.attrs.get("data-editorblocktype", "").lower() in {"captcha", "recaptcha"}:
+            if not descendants(inspector, index):
+                findings.append(Finding("warning", "empty-captcha",
+                    "The CAPTCHA block is empty; a marker alone does not prove bot protection. Verify the generated block in Dynamics.", node.line))
 
     has_designer_meta = any(
         node.tag == "meta"
@@ -607,11 +682,162 @@ def validate_text(source: str, mode: str = "auto") -> tuple[str, list[Finding]]:
     return resolved_mode, validate_native(inspector, source)
 
 
+def inspect_text(source: str) -> Inspector:
+    inspector = Inspector()
+    inspector.feed(source)
+    inspector.close()
+    return inspector
+
+
+def protected_node(node: Node) -> bool:
+    if node.tag in {"script", "style"}:
+        return False
+    return (
+        node.tag in {"html", "body", "form", "meta", "link", "label", "fieldset", "legend", "option", "optgroup"}
+        or node.tag in CONTROL_TAGS
+        or any(key.startswith("data-") for key in node.attrs)
+        or any(key in node.attrs for key in {"id", "role", "property-reference"})
+    )
+
+
+def protected_attrs(node: Node) -> dict[str, str]:
+    # Visual overrides belong in styles/classes; every other source attribute is
+    # part of the preservation contract, including unknown future metadata.
+    return {key: value for key, value in node.attrs.items() if key not in {"class", "style"}}
+
+
+def node_key(inspector: Inspector, index: int) -> str:
+    node = inspector.nodes[index]
+    parents = [
+        {"tag": inspector.nodes[parent].tag, "attrs": protected_attrs(inspector.nodes[parent])}
+        for parent in reversed(list(ancestors(inspector, index)))
+        if protected_node(inspector.nodes[parent])
+    ]
+    record: dict = {"tag": node.tag, "attrs": protected_attrs(node), "parents": parents}
+    if node.tag in {"option", "textarea", "label", "legend"}:
+        record["text"] = " ".join(node.text.split()) if node.tag != "textarea" else node.text
+    return json.dumps(record, sort_keys=True)
+
+
+def compare_native(original: str, styled: str) -> list[Finding]:
+    """Compare source contracts without publishing field values in diagnostics.
+
+    This is a DOM/attribute check, not a CSS, JavaScript, or Dataverse runtime proof.
+    Reordering fields is allowed; changing their owning block or option order is not.
+    """
+    before, after = inspect_text(original), inspect_text(styled)
+    findings: list[Finding] = []
+    before_nodes = Counter(node_key(before, i) for i, n in enumerate(before.nodes) if protected_node(n))
+    after_nodes = Counter(node_key(after, i) for i, n in enumerate(after.nodes) if protected_node(n))
+    removed, added = before_nodes - after_nodes, after_nodes - before_nodes
+    if removed:
+        findings.append(Finding("error", "contract-removed",
+            f"{sum(removed.values())} protected source nodes were removed or changed. Check fields, mappings, validation, consent, IDs, and parent relationships."))
+    if added:
+        findings.append(Finding("error", "contract-added",
+            f"{sum(added.values())} protected nodes were added or changed. A styling pass must preserve the original form contract."))
+
+    def classes(inspector: Inspector) -> Counter:
+        result: Counter = Counter()
+        for i, node in enumerate(inspector.nodes):
+            if node.tag not in {"script", "style"}:
+                result.update((node_key(inspector, i), name) for name in class_names(node))
+        return result
+
+    if classes(before) - classes(after):
+        findings.append(Finding("error", "class-removed",
+            "Existing classes were removed or moved from protected nodes. Keep generated CSS and JavaScript hooks; add styling classes instead."))
+
+    def options(inspector: Inspector) -> dict[str, list[dict]]:
+        return {
+            node_key(inspector, i): [
+                {"attrs": protected_attrs(child), "text": " ".join(child.text.split())}
+                for _, child in descendants(inspector, i) if child.tag == "option"
+            ]
+            for i, node in enumerate(inspector.nodes) if node.tag == "select"
+        }
+
+    if options(before) != options(after):
+        findings.append(Finding("error", "options-changed",
+            "Select options, their order, labels, values, or default selection changed."))
+
+    def scripts(inspector: Inspector) -> list[tuple]:
+        result = []
+        preceding: Counter = Counter()
+        for index, node in enumerate(inspector.nodes):
+            if protected_node(node):
+                preceding[node_key(inspector, index)] += 1
+            if node.tag == "script":
+                parents = [
+                    (inspector.nodes[parent].tag, protected_attrs(inspector.nodes[parent]))
+                    for parent in reversed(list(ancestors(inspector, index)))
+                    if protected_node(inspector.nodes[parent])
+                ]
+                result.append((node.attrs, node.text.strip(), parents, sorted(preceding.items())))
+        return result
+
+    if scripts(before) != scripts(after):
+        findings.append(Finding("error", "scripts-changed",
+            "Scripts, script attributes, placement, or execution order changed. Preserve existing behavior during restyling."))
+
+    def stylesheet_key(node: Node) -> tuple | None:
+        if node.tag == "style":
+            return (node.tag, json.dumps(node.attrs, sort_keys=True), node.text)
+        if node.tag == "link" and "stylesheet" in node.attrs.get("rel", "").lower().split():
+            return (node.tag, json.dumps(node.attrs, sort_keys=True), "")
+        return None
+
+    expected_style_order = [key for n in before.nodes if (key := stylesheet_key(n)) is not None]
+    original_styles = Counter(expected_style_order)
+    remaining_styles = original_styles.copy()
+    new_styles: list[Node] = []
+    retained_style_order: list[tuple] = []
+    last_retained_style = -1
+    first_new_style = len(after.nodes)
+    for index, node in enumerate(after.nodes):
+        key = stylesheet_key(node)
+        if key is None:
+            continue
+        if remaining_styles[key]:
+            remaining_styles[key] -= 1
+            retained_style_order.append(key)
+            last_retained_style = index
+        else:
+            if node.tag == "style":
+                new_styles.append(node)
+            first_new_style = min(first_new_style, index)
+    if +remaining_styles:
+        findings.append(Finding("error", "stylesheet-changed",
+            "An original stylesheet was removed or edited. Keep generated CSS intact and append scoped overrides."))
+    if retained_style_order != expected_style_order or first_new_style < last_retained_style:
+        findings.append(Finding("error", "stylesheet-order",
+            "Preserve the original stylesheet order and place new overrides after the original styles."))
+
+    # A deliberately conservative check for common global-selector mistakes.
+    # Browser checks still need to establish cascade, geometry, and accessibility.
+    for node in new_styles:
+        css = re.sub(r"/\*.*?\*/", "", node.text, flags=re.DOTALL)
+        for match in re.finditer(r"([^{}]+)\{", css):
+            selector = match.group(1).rsplit(";", 1)[-1].strip()
+            if selector.startswith("@"):
+                continue
+            if any(not re.match(r"^(?:form)?\.marketingForm(?=$|[.#:\s>+~\[])", part.strip()) for part in selector.split(",")):
+                findings.append(Finding("warning", "css-scope",
+                    "A new CSS selector is not rooted at .marketingForm. Scope every selector arm to the form; inspect complex at-rules manually.", node.line))
+                break
+
+    normalize_doctype = lambda value: " ".join(value.lower().split())
+    if normalize_doctype(before.doctype) != normalize_doctype(after.doctype):
+        findings.append(Finding("error", "doctype-changed", "Preserve the source document doctype."))
+    return findings
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run local preflight checks on a native Customer Insights form or Form Capture page."
     )
     parser.add_argument("path", type=Path, help="HTML file to inspect")
+    parser.add_argument("--original", type=Path, help="Untouched native Dynamics export to compare against the styled HTML")
     parser.add_argument(
         "--mode", choices=("auto", "native", "capture"), default="auto"
     )
@@ -630,13 +856,41 @@ def main(argv: list[str] | None = None) -> int:
 
     source = args.path.read_text(encoding="utf-8")
     mode, findings = validate_text(source, args.mode)
+    original_findings: list[Finding] = []
+    source_findings: list[Finding] = []
+    if args.original:
+        if mode != "native" or not args.original.is_file():
+            print("ERROR original: comparison requires an existing native-form export.", file=sys.stderr)
+            return 2
+        original = args.original.read_text(encoding="utf-8")
+        original_mode, original_findings = validate_text(original, "auto")
+        if original_mode != "native":
+            print("ERROR original: Form Capture pages are not native-form styling inputs.", file=sys.stderr)
+            return 2
+        baseline = Counter((item.severity, item.code, item.message) for item in original_findings)
+        introduced: list[Finding] = []
+        for item in findings:
+            key = (item.severity, item.code, item.message)
+            if baseline[key]:
+                source_findings.append(item)
+                baseline[key] -= 1
+            else:
+                introduced.append(item)
+        findings = introduced + compare_native(original, source)
     errors = sum(item.severity == "error" for item in findings)
     warnings = sum(item.severity == "warning" for item in findings)
     payload = {
         "file": str(args.path),
         "mode": mode,
+        "original": str(args.original) if args.original else None,
         "findings": [asdict(item) for item in findings],
+        "original_findings": [asdict(item) for item in original_findings],
+        "source_findings": [asdict(item) for item in source_findings],
         "summary": {"errors": errors, "warnings": warnings},
+        "source_summary": {
+            "errors": sum(item.severity == "error" for item in source_findings),
+            "warnings": sum(item.severity == "warning" for item in source_findings),
+        },
         "scope": (
             "Local preflight only. Customer Insights must still save, pass Check content, "
             "publish, and process a verified test submission."
@@ -646,6 +900,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps(payload, indent=2))
     else:
+        for item in source_findings:
+            print(f"SOURCE {item.severity.upper()} {item.code}: {item.message}")
         for item in findings:
             location = f" line {item.line}" if item.line else ""
             print(f"{item.severity.upper()} {item.code}{location}: {item.message}")
@@ -654,7 +910,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"NOTE {payload['scope']}")
 
-    if errors or (args.strict and warnings):
+    if errors or payload["source_summary"]["errors"] or (args.strict and (warnings or payload["source_summary"]["warnings"])):
         return 1
     return 0
 

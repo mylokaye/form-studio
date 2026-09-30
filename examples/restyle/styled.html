@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta type="xrm/designer/setting" name="type" value="marketing-designer-content-editor-document">
+  <meta type="xrm/designer/setting" name="layout-max-width" value="600px" datatype="text" label="Layout max width">
+  <title>Contact form — regression fixture</title>
+  <!-- Sanitized regression fixture. IDs and consent values are synthetic. This is not a deployment template. -->
+  <style>
+    form.marketingForm { max-width: 600px; margin: 24px auto; font: 14px/1.5 "Segoe UI", system-ui, sans-serif; color: #252525; }
+    form.marketingForm [data-section] { display: flex; }
+    form.marketingForm [data-container] { padding: 10px; }
+    form.marketingForm .textFormFieldBlock,
+    form.marketingForm .phoneFormFieldBlock,
+    form.marketingForm .optionSetFormFieldBlock,
+    form.marketingForm .textAreaFormFieldBlock,
+    form.marketingForm .dateTimeFormFieldBlock { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    form.marketingForm input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),
+    form.marketingForm select,
+    form.marketingForm textarea { box-sizing: border-box; width: 100%; padding: 8px; border: 1px solid #888; font: inherit; }
+    form.marketingForm fieldset { min-width: 0; margin: 0 0 12px; padding: 8px; }
+    form.marketingForm fieldset > div,
+    form.marketingForm .consentBlock > div { display: flex; align-items: flex-start; gap: 8px; }
+    form.marketingForm h1 { font-size: 28px; margin: 0 0 8px; }
+    form.marketingForm p { margin: 0 0 12px; }
+    form.marketingForm .submitButton { padding: 10px 24px; font: inherit; }
+  </style>
+
+  <style data-form-styling="true">
+    @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap");
+    form.marketingForm.d365-styled { --form-text: #1e293b; --form-accent: #174ea6; --form-border: #c4cfdd; box-sizing: border-box; width: calc(100% - 24px); max-width: 680px; margin: 24px auto; padding: clamp(16px, 3vw, 28px); color: var(--form-text); background: #fff; border: 1px solid #dce3ed; border-radius: 18px; box-shadow: 0 8px 28px rgb(30 41 59 / 8%); font: 14px/1.6 "Manrope", system-ui, sans-serif; }
+    form.marketingForm.d365-styled [data-layout] { max-width: 600px; margin: auto; }
+    form.marketingForm.d365-styled h1 { font-size: clamp(26px, 4vw, 34px); letter-spacing: -0.03em; color: #0f172a; }
+    form.marketingForm.d365-styled [data-editorblocktype="Text"] p { color: #475569; }
+    form.marketingForm.d365-styled label,
+    form.marketingForm.d365-styled legend { font-weight: 600; overflow-wrap: anywhere; }
+    form.marketingForm.d365-styled input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),
+    form.marketingForm.d365-styled select,
+    form.marketingForm.d365-styled textarea { min-width: 0; min-height: 46px; padding: 11px 12px; color: var(--form-text); background: #fff; border: 1px solid var(--form-border); border-radius: 9px; font: inherit; }
+    form.marketingForm.d365-styled input:focus-visible,
+    form.marketingForm.d365-styled select:focus-visible,
+    form.marketingForm.d365-styled textarea:focus-visible,
+    form.marketingForm.d365-styled button:focus-visible { outline: 3px solid #6aa3ed; outline-offset: 3px; }
+    form.marketingForm.d365-styled input:user-invalid,
+    form.marketingForm.d365-styled select:user-invalid,
+    form.marketingForm.d365-styled textarea:user-invalid { border-color: #b42318; }
+    form.marketingForm.d365-styled textarea { resize: vertical; }
+    form.marketingForm.d365-styled fieldset { border: 1px solid var(--form-border); border-radius: 9px; padding: 10px 12px; }
+    form.marketingForm.d365-styled fieldset > div { margin: 7px 0; }
+    form.marketingForm.d365-styled input[type="checkbox"],
+    form.marketingForm.d365-styled input[type="radio"] { flex: 0 0 auto; width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--form-accent); }
+    form.marketingForm.d365-styled .consentBlock label { font-weight: 400; }
+    form.marketingForm.d365-styled .submitButton { min-height: 48px; width: 100%; padding: 12px 20px; border: 0; border-radius: 9px; color: #fff; background: var(--form-accent); font: 600 15px/1.5 "Manrope", system-ui, sans-serif; cursor: pointer; }
+    form.marketingForm.d365-styled .submitButton:hover { background: #123d82; }
+    @media (max-width: 680px) {
+      form.marketingForm.d365-styled [data-section] { flex-direction: column; }
+      form.marketingForm.d365-styled [data-container] { width: auto !important; flex: 0 1 auto !important; min-width: 0 !important; align-self: stretch; }
+      form.marketingForm.d365-styled input,
+      form.marketingForm.d365-styled select,
+      form.marketingForm.d365-styled textarea { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <form class="marketingForm d365-styled" aria-label="Contact request">
+    <div data-layout="true" data-layout-version="v3" data-layout-flex="true" data-layout-maxwidth="600px" property-reference="data-layout-maxwidth:@layout-max-width">
+      <div class="wrap-section" data-section="true">
+        <div class="columnContainer" data-container="true" data-container-width="100" id="container-intro" style="width: 580px; flex: 0 0 580px;">
+          <div data-editorblocktype="Text"><h1>Let’s talk</h1><p>Tell us a little about yourself and how we can help.</p></div>
+        </div>
+      </div>
+      <div class="wrap-section" data-section="true">
+        <div class="columnContainer" data-container="true" data-container-width="50" id="container-firstname" style="width: 280px; flex: 0 0 280px;">
+          <div class="textFormFieldBlock" data-editorblocktype="TextFormField" data-targetproperty="firstname" data-targetaudience="contact" data-required="required" data-prefill="false">
+            <label for="firstname-fixture">First name</label><input id="firstname-fixture" name="firstname" type="text" maxlength="50" autocomplete="given-name" value="" required>
+          </div>
+        </div>
+        <div class="columnContainer" data-container="true" data-container-width="50" id="container-lastname" style="width: 280px; flex: 0 0 280px;">
+          <div class="textFormFieldBlock" data-editorblocktype="TextFormField" data-targetproperty="lastname" data-targetaudience="contact" data-required="required" data-prefill="false">
+            <label for="lastname-fixture">Last name</label><input id="lastname-fixture" name="lastname" type="text" maxlength="50" autocomplete="family-name" value="" required>
+          </div>
+        </div>
+      </div>
+      <div class="wrap-section" data-section="true">
+        <div class="columnContainer" data-container="true" data-container-width="50" id="container-email" style="width: 280px; flex: 0 0 280px;">
+          <div class="textFormFieldBlock" data-editorblocktype="TextFormField" data-targetproperty="emailaddress1" data-targetaudience="contact" data-required="required" data-prefill="false">
+            <label for="email-fixture">Email address</label><input id="email-fixture" name="emailaddress1" type="email" maxlength="100" autocomplete="email" value="" required>
+          </div>
+        </div>
+        <div class="columnContainer" data-container="true" data-container-width="50" id="container-phone" style="width: 280px; flex: 0 0 280px;">
+          <div class="phoneFormFieldBlock" data-editorblocktype="PhoneFormField" data-targetproperty="mobilephone" data-targetaudience="contact" data-prefill="false">
+            <label for="phone-fixture">Phone number</label><input id="phone-fixture" name="mobilephone" type="tel" maxlength="50" autocomplete="tel" value="">
+          </div>
+        </div>
+      </div>
+      <div class="wrap-section" data-section="true">
+        <div class="columnContainer" data-container="true" data-container-width="50" id="container-method" style="width: 280px; flex: 0 0 280px;">
+          <div class="optionSetFormFieldBlock" data-editorblocktype="OptionSetFormField" data-prefill="false">
+            <label for="method-fixture">Preferred contact method</label><select id="method-fixture" name="Contact method"><option value="1" selected>Email</option><option value="2">Phone</option></select>
+          </div>
+          <div class="dateTimeFormFieldBlock" data-editorblocktype="DateTimeFormField" data-prefill="false">
+            <label for="date-fixture">Preferred date</label><input id="date-fixture" name="Preferred date" type="date" value="">
+          </div>
+        </div>
+        <div class="columnContainer" data-container="true" data-container-width="50" id="container-staff" style="width: 280px; flex: 0 0 280px;">
+          <div class="textFormFieldBlock" data-editorblocktype="TextFormField" data-prefill="false">
+            <label for="staff-fixture">How many people work in your organization?</label><input id="staff-fixture" name="Staff size" type="number" min="1" max="100000" step="1" value="">
+          </div>
+          <div class="twoOptionFormFieldBlock" data-editorblocktype="TwoOptionFormField" data-prefill="false">
+            <fieldset><legend>Would you like a callback?</legend><div><input id="callback-yes" name="Callback" type="radio" value="1"><label for="callback-yes">Yes</label></div><div><input id="callback-no" name="Callback" type="radio" value="0" checked><label for="callback-no">No</label></div></fieldset>
+          </div>
+        </div>
+      </div>
+      <div class="wrap-section" data-section="true">
+        <div class="columnContainer" data-container="true" data-container-width="100" id="container-message" style="width: 580px; flex: 0 0 580px;">
+          <div class="textAreaFormFieldBlock" data-editorblocktype="TextAreaFormField" data-targetproperty="description" data-targetaudience="contact" data-prefill="false">
+            <label for="message-fixture">How can we help?</label><textarea id="message-fixture" name="description" rows="4" maxlength="2000"></textarea>
+          </div>
+          <div class="multiOptionSetFormFieldBlock" data-editorblocktype="MultiOptionSetFormField" data-prefill="false">
+            <fieldset><legend>What are you interested in?</legend><div><input id="interest-service" name="Interests" type="checkbox" value="1"><label for="interest-service">Service and support</label></div><div><input id="interest-product" name="Interests" type="checkbox" value="2"><label for="interest-product">Products</label></div></fieldset>
+          </div>
+          <div class="textFormFieldBlock" data-editorblocktype="TextFormField" data-prefill="false" data-hide="hide" style="display: none;"><input id="source-fixture" name="Source" type="hidden" value="website"></div>
+        </div>
+      </div>
+      <div class="wrap-section" data-section="true">
+        <div class="columnContainer" data-container="true" data-container-width="100" id="container-consent" style="width: 580px; flex: 0 0 580px;">
+          <div class="consentBlock" data-editorblocktype="Consent" data-required="false" data-compliancesettingsid="11111111-1111-4111-8111-111111111111" data-purposeid="22222222-2222-4222-8222-222222222222" data-channels="Email" data-optinwhenchecked="true" data-prefill="false">
+            <div><input id="consent-fixture" name="msdynmkt_purposeid;channels;optinwhenchecked" type="checkbox" value="22222222-2222-4222-8222-222222222222;Email;true"><label for="consent-fixture">I would like to receive occasional product news by email.</label></div>
+          </div>
+        </div>
+      </div>
+      <div class="wrap-section" data-section="true">
+        <div class="columnContainer" data-container="true" data-container-width="100" id="container-submit" style="width: 580px; flex: 0 0 580px;">
+          <div class="submitButtonWrapper" data-editorblocktype="SubmitButton"><button class="submitButton" type="submit">Send request</button></div>
+        </div>
+      </div>
+    </div>
+  </form>
+</body>
+</html>

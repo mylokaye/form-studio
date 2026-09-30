@@ -6,6 +6,25 @@ All material changes to the D365 Customer Insights - Journeys Forms skill should
 
 Add material changes here before the next version is released.
 
+## [1.1.0] - 2026-09-30
+
+### Changed
+
+- Focused skill discovery and instructions on restyling a user's native Dynamics export and returning complete HTML for the same form.
+- Consolidated the active documentation into HTML contract, styling, validation/handoff, and optional JavaScript references; preserved the former references under `docs/background/`.
+- Archived historical examples and the simulated-submission smoke form, and replaced active examples with paired sanitized regression fixtures plus a separate preview harness.
+- Updated the preview build for the new paths while preserving its existing root, index, and legacy test routes. Hosting configuration remains unchanged; no deployment is implied.
+
+### Added
+
+- Added `--original` comparison to protect functional nodes/attributes, field ownership, generated classes, options/defaults, scripts/order, original stylesheets, and doctype.
+- Added separate source and introduced-finding reports, div/table layout checks, duplicate-field checks, unmanaged-control rejection, and conservative new-CSS scope warnings.
+- Added preservation regression tests and a responsive styled fixture covering common mapped/unmapped controls and consent. Fixtures remain non-deployable and local checks do not establish tenant acceptance.
+
+## Earlier unreleased changes
+
+The following entries predate the styling-only refactor and describe the archived workflow and fixtures.
+
 ### Added
 
 - Added published-layout width guidance covering Dynamics-generated inline `width` and `flex-basis` values, padded outer wrappers, section expansion, and computed-geometry verification.

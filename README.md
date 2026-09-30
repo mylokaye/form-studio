@@ -1,146 +1,70 @@
-# Dynamics 365 - Customer Insights Forms Skill
+# Style Dynamics forms
 
-> **Release status: Alpha / locally validated**
->
-> This project is experimental and not a substitute for validation in a target Customer Insights environment. Dynamics 365 markup, CSS classes, JavaScript APIs, and Designer behavior may change.
+A Codex skill for restyling HTML exported from **Dynamics 365 Customer Insights - Journeys** and returning the complete HTML to paste back into the same form.
 
-This repository contains a Codex skill for creating, converting, embedding, customizing, validating, and troubleshooting Dynamics 365 Customer Insights - Journeys forms.
+**Release: 1.1.0 — Alpha, locally checked.** The regression fixtures and local preview are not proof of acceptance or submission processing in a Dynamics tenant.
 
-The skill combines:
+## User workflow
 
-- Focused guidance for Designer elements, form embedding, client-side events, custom JavaScript, submission feedback, and styling.
-- Current Microsoft Learn documentation retrieved through the Microsoft Learn MCP.
-- Archival Lead and Contact form exports used to study generated structure. They contain non-reusable placeholder and environment-specific consent values and are not deployment templates.
-- An experimental visual design system that preserves Dynamics-managed form structure.
+1. Create and configure your form in Dynamics, including fields, validation, consent, and CAPTCHA.
+2. Copy the complete HTML from its HTML editor and supply it to the skill with your desired appearance.
+3. The skill preserves the original and restyles its existing div-based form, then compares the result against your export and checks the rendered appearance.
+4. Receive the full styled HTML and paste it into the same Dynamics form. Keep your original as a backup.
+5. Save, run **Check content**, inspect the saved HTML and published result, and verify a real test submission.
 
-## Current scope
+The skill keeps its existing invocation name, `$d365-customer-insights-forms`. It now focuses on this styling workflow. New field definitions, Form Capture, embedding integrations, and changes to business logic are outside the default scope.
 
-The Alpha currently helps an agent:
+## What is preserved
 
-- Recognize and preserve Designer-managed HTML and `data-*` attributes.
-- Choose between a native form, native rebuild, standard embed, and Form Capture integration.
-- Create a native form from a target-environment blank form and convert an existing form without inventing mappings or identifiers.
-- Understand the published D365 layout-width contract, including generated inline `width` and `flex-basis` values on sections and containers.
-- Preserve the section, container, column, and field spacing represented by the repository fixtures without treating those values as universal platform requirements.
-- Derive required fields from the selected matching rule, target table, and business requirement.
-- Work with script-hosted forms, dynamic rendering, React embedding, and lookup fields.
-- Add scoped CSS and event-driven JavaScript without relying on inline event attributes.
-- Work with form prefill, unmapped fields, and submitted values without treating CRM setup as form code.
-- Apply public-form bot protection and account for service-protection throttling.
-- Customize validation, submission feedback, redirects, consent controls, and common form fields.
-- Apply custom fonts, including the project's Manrope choice, with system and generic fallbacks.
-- Check changing platform behavior against official Microsoft Learn documentation.
-- Run a dependency-free local preflight for native source or Form Capture pages and report platform acceptance separately from local checks.
+The supplied form owns its fields and behavior: generated IDs/classes, mapped and unmapped controls, target metadata, label associations, required/validation settings, choices/defaults, hidden values, consent, CAPTCHA, original stylesheets, and scripts. New styling uses scoped CSS and div containers. Table-based form layouts require re-exporting from Dynamics with its table-less layout enabled.
 
-The core agent instructions are in [`SKILL.md`](SKILL.md). Detailed material is loaded from `references/` only when relevant.
+The source-comparison checker detects changed functional attributes/ownership, added or removed controls, duplicate field blocks, layout tables, changed scripts, and edited or reordered original stylesheets. It flags common unscoped new CSS. Existing source issues are reported separately from styling regressions. Browser checks must still verify geometry, cascade, accessibility, and validation presentation.
 
 ## Repository structure
 
 ```text
-.
-├── CHANGELOG.md
-├── SKILL.md
-├── test.html
-├── agents/
-│   └── openai.yaml
-├── scripts/
-│   └── validate_form.py
-├── tests/
-│   └── test_validate_form.py
-├── references/
-│   ├── build-or-convert.md
-│   ├── custom-attributes.md
-│   ├── custom-fonts.md
-│   ├── custom-javascript.md
-│   ├── designer-elements.md
-│   ├── embed-and-client-api.md
-│   ├── form-management.md
-│   ├── form-capture.md
-│   ├── form-prefill-and-submitted-values.md
-│   ├── form-security-and-operations.md
-│   ├── form-structure.md
-│   └── styling-and-submission-feedback.md
-└── examples/
-    ├── contact/
-    │   └── default.html
-    ├── design-system/
-    │   └── customer-insights-form.css
-    └── lead/
-        ├── default.html
-        ├── minimal.html
-        └── brand.html
+SKILL.md                       Active workflow and constraints
+agents/openai.yaml             Discovery/UI metadata
+references/
+  html-contract.md             Preserve generated HTML and behavior
+  styling.md                   Scoped CSS, fonts, mobile, accessibility
+  validation-and-handoff.md    Comparison and Dynamics acceptance
+  javascript.md                Optional, requested script investigation
+scripts/
+  validate_form.py             Native preflight and source comparison
+  build-site.mjs               Existing preview-site build
+tests/test_validate_form.py    Structural/preservation regressions
+examples/
+  preview.html                 Separate local submission-safe harness
+  restyle/original.html        Sanitized baseline fixture
+  restyle/styled.html          Same contract with scoped styling
+docs/background/               Former broad reference material
+docs/archive/                  Historical examples and old demo
 ```
 
-## Example variants
+Only the four focused references are routed by the active skill. Background material and archival examples remain for maintainers; they are not instructions or deployment templates. Root README/changelog/build metadata serve repository maintenance and preview hosting.
 
-| Variant | Purpose | Status |
-| --- | --- | --- |
-| `default.html` | Archival Dynamics export and structural baseline | Available for Lead and Contact; not reusable as-is |
-| `minimal.html` | Styling removed while preserving the archival structure and metadata | Lead only; reference use; not reusable as-is |
-| `brand.html` | Archival Lead export with an additional visual-only brand override | Lead only; experimental; not reusable as-is |
+## Local verification
 
-The branded form is based on the archival Dynamics default export, not the minimal form. It is a visual experiment, not a production template. Dynamics' own stylesheet and inline layout values remain authoritative; the brand stylesheet should change visual presentation without taking ownership of sections, columns, widths, or flex layout. The design-system CSS uses the project's Manrope font choice and applies it to the branded form.
+```bash
+python3 -m unittest -q tests/test_validate_form.py
+python3 scripts/validate_form.py examples/restyle/styled.html --mode native --original examples/restyle/original.html --json
+npm run build
+python3 -m http.server 8000 --bind 127.0.0.1
+```
 
-The archival exports contain values such as `undefined` consent fields, example topic/purpose identifiers, generated IDs, and older HIP CAPTCHA styles. Never copy these values into a target form. Add consent and current reCAPTCHA through that environment's form editor.
+Open [the local preview](http://127.0.0.1:8000/examples/preview.html) after starting the server. The preview contains both examples in separate frames and intercepts demo submissions in its parent page. The fixture HTML has no simulated-success or submission-interception script.
 
-The root [`test.html`](test.html) is a basic standalone smoke test. Its outer card budgets for the `600px` inner width used by the Dynamics layout, so it can be used to verify the width budget without treating a local preview as proof that a published form fits.
+The paired fixtures cover mapped/unmapped text, email, phone, textarea, select, radio, multi-select, number, date, hidden values, and consent. They use synthetic IDs and consent configuration derived from inspected markup conventions; they are not current tenant exports or usable production templates. They intentionally omit operational CAPTCHA, which is reported as an existing source warning. The styled sample demonstrates mobile overrides for generated fixed inline widths and loads the project's Manrope font from Google, with system/generic fallbacks.
 
-## Known issues and limitations
+The preview build continues to serve `/`, `/index.html`, and the legacy `/test.html` route, plus the two example documents. Building does not deploy or change existing hosting configuration.
 
-- The design system is an early prototype and has only received limited testing with the included Lead form.
-- The Contact minimal and branded variants have not been created.
-- Adding, removing, reordering, or resizing fields has not been tested across all Designer layouts and field types.
-- Dynamics can rewrite HTML, CSS, and inline layout values when a form is saved.
-- The Designer canvas adds editor-specific styles and overlays, so it may differ from the published form.
-- Published Dynamics output can materialize `data-container-width` as fixed inline widths and flex bases. A padded `600px` `border-box` wrapper therefore has less content width than the generated layout and can visibly overflow unless the outer width budget accounts for padding and borders.
-- The repository fixtures use a white background and one observed spacing pattern: zero-padded sections, `10px` field/content container padding, `16px` section gaps, `1rem` two-column gaps, and `0.45rem` label/control gaps. These are not universal Microsoft requirements.
-- Published, standalone, externally embedded, React, and iframe scenarios have not all been verified.
-- Keyboard navigation, screen readers, high-contrast mode, browser zoom, native validation, mobile layouts, and reduced-motion behavior need a full accessibility review.
-- Success, error, loading, redirect, consent, and server-validation states need broader testing.
-- Microsoft documentation currently contains inconsistent naming for the post-submit success property. Verify the current API before relying on it.
-- Example forms contain placeholder consent values, generated IDs, topic identifiers, and environment-specific data. They are intentionally excluded from deployment validation.
-- The local checker cannot validate Dataverse metadata, consent configuration, matching rules, domain allow-list state, platform sanitization, or submission processing. There are no automated end-to-end Dynamics tests.
+The `--original` JSON report has introduced findings in `findings`/`summary`, original preflight results in `original_findings`, and remaining original issues in `source_findings`/`source_summary`. Exit status is nonzero for introduced or remaining source errors; `--strict` also fails on warnings. The older preflight `--mode capture` API remains available for compatibility, but is not used by this skill's styling workflow.
 
-## Development principles
+## Proof boundaries
 
-1. Preserve all Dynamics-generated metadata, field attributes, IDs, validation, consent configuration, and Designer `div` structures unless a task explicitly requires changing them.
-2. Keep original default exports unchanged as comparison baselines.
-3. Apply branded styles after the Dynamics stylesheet and avoid overriding structural layout rules.
-4. Treat custom Dynamics CSS selectors and generated inline layout widths as implementation details that require published-form testing.
-5. Derive the audience, mappings, required fields, consent identifiers, form IDs, and service URLs from the target environment; repository fixture values are not portable.
-6. Verify current platform behavior through the Microsoft Learn MCP before presenting it as definitive.
-7. Test changes in a non-production form and check both the Designer and the published result, including computed widths, horizontal overflow, submission state, target record, and consent records.
-8. Remove customer data, organization URLs, form IDs, tracking identifiers, and private asset URLs from shared examples.
+Local comparison cannot validate Dataverse schema, matching rules, compliance relationships, bot protection, external-hosting permissions, HTML sanitization, or actual submission processing. It does not interpret JavaScript or prove that CSS preserves all runtime behavior. Keep the original generated markup and test the result after Dynamics saves and publishes it.
 
-## Planned work
+Report local checks, platform acceptance, published rendering, and submission verification separately. Saving changes to an already live form republishes it; use a copy/non-production form for acceptance testing where possible.
 
-- Complete Lead form validation in the Designer and published form.
-- Create Contact minimal and branded variants.
-- Test all supported field and consent types.
-- Test field addition, removal, reordering, and column-width changes.
-- Verify responsive behavior and accessibility.
-- Test success, failure, validation, and redirect states.
-- Forward-test the skill with realistic form-building and troubleshooting requests.
-
-## Official sources
-
-- [Microsoft Learn MCP Server](https://learn.microsoft.com/en-us/training/support/mcp)
-- [Create Customer Insights - Journeys forms](https://learn.microsoft.com/dynamics365/customer-insights/journeys/real-time-marketing-form-create)
-- [Deploy pages that contain Customer Insights - Journeys forms](https://learn.microsoft.com/dynamics365/customer-insights/journeys/real-time-marketing-deploy-pages)
-- [Capture existing forms](https://learn.microsoft.com/dynamics365/customer-insights/journeys/real-time-marketing-form-capture)
-- [Extend Customer Insights - Journeys forms using code](https://learn.microsoft.com/dynamics365/customer-insights/journeys/developer/realtime-marketing-form-client-side-extensibility)
-- [Use custom attributes to enable designer features](https://learn.microsoft.com/dynamics365/customer-insights/journeys/custom-template-attributes)
-- [Use custom fonts in Customer Insights - Journeys](https://learn.microsoft.com/dynamics365/customer-insights/journeys/use-custom-fonts)
-- [Manage Customer Insights - Journeys forms](https://learn.microsoft.com/dynamics365/customer-insights/journeys/real-time-marketing-manage-forms)
-- [Prefill values for forms and event registration](https://learn.microsoft.com/dynamics365/customer-insights/journeys/real-time-marketing-form-prefill)
-- [Create unmapped fields for marketing forms](https://learn.microsoft.com/dynamics365/customer-insights/journeys/real-time-marketing-forms-custom-fields)
-- [Use submitted values from forms](https://learn.microsoft.com/dynamics365/customer-insights/journeys/real-time-marketing-form-submitted-values)
-- [Forms security and privacy](https://learn.microsoft.com/dynamics365/customer-insights/journeys/real-time-marketing-form-security-privacy)
-- [Troubleshoot Customer Insights - Journeys forms](https://learn.microsoft.com/dynamics365/customer-insights/journeys/real-time-marketing-troubleshooting-forms)
-- [Authenticate domains and enable external form hosting](https://learn.microsoft.com/dynamics365/customer-insights/journeys/domain-authentication)
-
-## Version
-
-- Repository version: `1.0.1`
-- Release stage: **Alpha / locally validated**
-- Stability: **Unstable; breaking changes expected**
+Sources: [form customization and validation](https://learn.microsoft.com/en-us/dynamics365/customer-insights/journeys/real-time-marketing-manage-forms), [div layouts and troubleshooting](https://learn.microsoft.com/en-us/troubleshoot/dynamics-365/customer-insights/journeys/forms/troubleshooting-forms), [unmapped fields](https://learn.microsoft.com/en-us/dynamics365/customer-insights/journeys/real-time-marketing-forms-custom-fields).
