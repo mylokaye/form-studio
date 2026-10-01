@@ -10,6 +10,7 @@ The user creates and configures the form in Dynamics, copies its HTML here, rece
 ## Inputs and scope
 
 - Obtain the complete, untouched native form HTML and the requested appearance: a screenshot, reference design, brand guidelines, or a description. Resolve ordinary visual choices from the reference and supplied form.
+- For a test without a design reference, state a reasonable visual default and proceed. Describe the result as a styled candidate, not an exact design recreation.
 - If native HTML is missing, request it before producing paste-back code. A screenshot or embed snippet does not contain the form's complete field contract.
 - Use **div containers**, not table-based form layouts. If the export uses layout tables, ask the user to enable **Settings > Feature switches > Forms > Enable table-less layouts in Form editor**, save the form, and copy its HTML again. Do not rebuild mapped controls or convert a legacy layout by guessing metadata.
 - Style the existing form. Adding fields, changing validation or consent, and changing submission logic are separate tasks that require an explicit request and appropriate Dynamics validation.
@@ -25,7 +26,9 @@ The user creates and configures the form in Dynamics, copies its HTML here, rece
 
    Report existing source problems separately. Do not silently repair fields, consent, CAPTCHA, or scripts while styling. Existing warnings, such as a missing CAPTCHA block, do not authorize adding a fabricated block.
 
-2. Identify the requested colors, typography, spacing, borders, control treatment, and desktop/mobile behavior. Keep the original content and functional markup. Read [styling guidance](references/styling.md).
+   Continue useful local styling when source errors can be preserved safely. Mark the output as a candidate with unresolved source findings; never claim it is ready for publishing. Known Designer choice-group headings can generate accessibility warnings without meaning that individual controls are missing.
+
+2. Identify the requested colors, typography, borders, control treatment, and desktop/mobile behavior. Use the shared [Form Studio spacing preset](assets/form-spacing.css) for consistent output unless the user requests different spacing. Keep the original content and functional markup. Read [styling guidance](references/styling.md).
 3. Preserve the source envelope, generated CSS, div hierarchy, IDs, metadata, controls, choices, validation, consent, hidden/default values, and scripts. Add styling classes and one scoped override `<style>` after the original styles. Keep the normal Dynamics submission path. Do not add demo submit handlers or simulated success messages.
 4. Save the complete result as `styled.html`, then compare it against the untouched export:
 
@@ -34,7 +37,7 @@ The user creates and configures the form in Dynamics, copies its HTML here, rece
    ```
 
    Resolve introduced errors and review introduced warnings. The checker distinguishes existing source findings from changes introduced by styling; it does not prove Dataverse configuration or runtime behavior.
-5. Render the result at desktop and mobile widths. Check overflow, control geometry, label readability, native validation, keyboard focus, zoom, and that the new CSS does not affect surrounding content. Put any local submission interception in a separate preview harness, never in `styled.html`.
+5. Render the result at desktop and mobile widths. Check measured column/field/label gaps, overflow, control geometry, label readability, native validation, keyboard focus, zoom, and that the new CSS does not affect surrounding content. Include saved `.innerSection` wrappers in spacing checks. Put any local submission interception in a separate preview harness, never in `styled.html`.
 6. Deliver the full `styled.html`, the preview when available, a brief preservation/check report, and [paste-back instructions](references/validation-and-handoff.md). Do not substitute an embed snippet, partial CSS, or a preview-only document for the complete HTML.
 
 Resolve script paths relative to this `SKILL.md`; the example commands assume the skill directory is the current directory. Keep generated artifacts in the user's workspace, outside this installed skill unless explicitly requested.

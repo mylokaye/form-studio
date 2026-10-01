@@ -1,0 +1,58 @@
+/* Form Studio defaults. Inline this after generated CSS; no external link is needed. */
+form.marketingForm.d365-styled {
+  --form-space-label-control: 8px;
+  --form-space-field: 24px;
+  --form-space-column: 24px;
+  --form-space-choice: 10px;
+  --form-space-consent: 12px;
+}
+
+/* Designer exports can use direct columns; saved forms can add .innerSection. */
+form.marketingForm.d365-styled [data-section="true"],
+form.marketingForm.d365-styled .innerSection {
+  column-gap: var(--form-space-column);
+}
+
+form.marketingForm.d365-styled [data-editorblocktype$="FormField" i] {
+  row-gap: var(--form-space-label-control);
+  margin-block: 0 var(--form-space-field);
+}
+
+form.marketingForm.d365-styled .radiobuttons,
+form.marketingForm.d365-styled .twoOptionFormFieldBlock fieldset,
+form.marketingForm.d365-styled .multiOptionSetFormFieldBlock fieldset {
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--form-space-choice);
+  margin: 0;
+}
+
+form.marketingForm.d365-styled .twoOptionFormFieldBlock fieldset > div,
+form.marketingForm.d365-styled .multiOptionSetFormFieldBlock fieldset > div {
+  margin-block: 0;
+}
+
+form.marketingForm.d365-styled .twoOptionFormFieldBlock legend,
+form.marketingForm.d365-styled .multiOptionSetFormFieldBlock legend {
+  margin-bottom: var(--form-space-label-control);
+}
+
+form.marketingForm.d365-styled .consentBlock {
+  margin-bottom: var(--form-space-consent);
+}
+
+@media (max-width: 640px) {
+  form.marketingForm.d365-styled [data-section="true"],
+  form.marketingForm.d365-styled .innerSection {
+    flex-direction: column !important;
+    column-gap: 0;
+    row-gap: 0;
+  }
+
+  form.marketingForm.d365-styled [data-container="true"] {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: 0 1 auto !important;
+    align-self: stretch;
+  }
+}

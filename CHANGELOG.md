@@ -4,7 +4,11 @@ All material changes to the D365 Customer Insights - Journeys Forms skill should
 
 ## [Unreleased]
 
-Add material changes here before the next version is released.
+- Add shared, configurable Form Studio spacing defaults to every styling output. Cover direct columns and Dynamics-saved `.innerSection` wrappers, including mobile stacking, and require measured gap checks after publishing.
+- Recognize native saved-row wrappers in source preflight while retaining container-parent and per-row width validation.
+- Recognize inspected native Designer choice-group headings with intact option labels as accessibility warnings; keep missing/cross-block targets and malformed groups as errors, and preserve Form Capture checks.
+- Protect generated Text-block copy, document titles, and button wording during source comparison, with regression coverage for decorative wrappers and reordered intact containers.
+- Clarify how to proceed with a styling candidate when source configuration is incomplete or a test has no design reference. Add computed mobile-font, preview iframe sizing, and zoom-evidence guidance from the pasted-export test.
 
 ## [1.1.0] - 2026-09-30
 

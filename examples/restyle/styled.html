@@ -31,6 +31,7 @@
     @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap");
     form.marketingForm.d365-styled { --form-text: #1e293b; --form-accent: #174ea6; --form-border: #c4cfdd; box-sizing: border-box; width: calc(100% - 24px); max-width: 680px; margin: 24px auto; padding: clamp(16px, 3vw, 28px); color: var(--form-text); background: #fff; border: 1px solid #dce3ed; border-radius: 18px; box-shadow: 0 8px 28px rgb(30 41 59 / 8%); font: 14px/1.6 "Manrope", system-ui, sans-serif; }
     form.marketingForm.d365-styled [data-layout] { max-width: 600px; margin: auto; }
+    form.marketingForm.d365-styled [data-container="true"] { width: auto !important; min-width: 0 !important; flex: 1 1 0 !important; padding: 0; }
     form.marketingForm.d365-styled h1 { font-size: clamp(26px, 4vw, 34px); letter-spacing: -0.03em; color: #0f172a; }
     form.marketingForm.d365-styled [data-editorblocktype="Text"] p { color: #475569; }
     form.marketingForm.d365-styled label,
@@ -56,10 +57,70 @@
     @media (max-width: 680px) {
       form.marketingForm.d365-styled [data-section] { flex-direction: column; }
       form.marketingForm.d365-styled [data-container] { width: auto !important; flex: 0 1 auto !important; min-width: 0 !important; align-self: stretch; }
-      form.marketingForm.d365-styled input,
+      form.marketingForm.d365-styled input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),
       form.marketingForm.d365-styled select,
       form.marketingForm.d365-styled textarea { font-size: 16px; }
     }
+
+    /* Inline shared Form Studio spacing preset from assets/form-spacing.css. */
+/* Form Studio defaults. Inline this after generated CSS; no external link is needed. */
+form.marketingForm.d365-styled {
+  --form-space-label-control: 8px;
+  --form-space-field: 24px;
+  --form-space-column: 24px;
+  --form-space-choice: 10px;
+  --form-space-consent: 12px;
+}
+
+/* Designer exports can use direct columns; saved forms can add .innerSection. */
+form.marketingForm.d365-styled [data-section="true"],
+form.marketingForm.d365-styled .innerSection {
+  column-gap: var(--form-space-column);
+}
+
+form.marketingForm.d365-styled [data-editorblocktype$="FormField" i] {
+  row-gap: var(--form-space-label-control);
+  margin-block: 0 var(--form-space-field);
+}
+
+form.marketingForm.d365-styled .radiobuttons,
+form.marketingForm.d365-styled .twoOptionFormFieldBlock fieldset,
+form.marketingForm.d365-styled .multiOptionSetFormFieldBlock fieldset {
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--form-space-choice);
+  margin: 0;
+}
+
+form.marketingForm.d365-styled .twoOptionFormFieldBlock fieldset > div,
+form.marketingForm.d365-styled .multiOptionSetFormFieldBlock fieldset > div {
+  margin-block: 0;
+}
+
+form.marketingForm.d365-styled .twoOptionFormFieldBlock legend,
+form.marketingForm.d365-styled .multiOptionSetFormFieldBlock legend {
+  margin-bottom: var(--form-space-label-control);
+}
+
+form.marketingForm.d365-styled .consentBlock {
+  margin-bottom: var(--form-space-consent);
+}
+
+@media (max-width: 640px) {
+  form.marketingForm.d365-styled [data-section="true"],
+  form.marketingForm.d365-styled .innerSection {
+    flex-direction: column !important;
+    column-gap: 0;
+    row-gap: 0;
+  }
+
+  form.marketingForm.d365-styled [data-container="true"] {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: 0 1 auto !important;
+    align-self: stretch;
+  }
+}
   </style>
 </head>
 <body>

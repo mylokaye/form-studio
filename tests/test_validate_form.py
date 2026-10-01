@@ -66,6 +66,24 @@ INVALID_NATIVE = """<html><body>
 """
 
 
+DESIGNER_GROUPS = """
+<div data-editorblocktype="MultiOptionSetFormField" data-prefill="false">
+  <label class="block-label" for="industries">Industry</label>
+  <fieldset id="industries" name="Industry">
+    <div><input id="industry-tech" type="checkbox" name="Industry" value="1"><label for="industry-tech">Technology</label></div>
+    <div><input id="industry-manufacturing" type="checkbox" name="Industry" value="2"><label for="industry-manufacturing">Manufacturing</label></div>
+  </fieldset>
+</div>
+<div data-editorblocktype="TwoOptionFormField" data-prefill="false">
+  <label class="block-label" for="contact-method">Preferred contact method</label>
+  <div class="radiobuttons" id="contact-method">
+    <div><input id="method-email" type="radio" name="Contact method" value="1" checked><label for="method-email">Email</label></div>
+    <div><input id="method-phone" type="radio" name="Contact method" value="0"><label for="method-phone">Phone</label></div>
+  </div>
+</div>
+"""
+
+
 VALID_CAPTURE = """<!doctype html>
 <html><body>
 <form id="existing-form">
@@ -200,6 +218,74 @@ class ValidateFormTests(unittest.TestCase):
         _, warnings = self.codes(VALID_NATIVE, "native")
         self.assertIn("empty-captcha", warnings)
 
+    def wrapped_native(self, wrapper: str = '<div class="innerSection wrap-section">') -> str:
+        return VALID_NATIVE.replace('<div data-section="true">', '<div data-section="true">' + wrapper).replace(
+            '        </div>\n      </div>\n    </form>', '        </div></div>\n      </div>\n    </form>').replace(
+            '        </div>\n        <div data-section="true">', '        </div></div>\n        <div data-section="true">')
+
+    def test_saved_inner_sections_are_recognized(self) -> None:
+        errors, warnings = self.codes(self.wrapped_native(), "native")
+        self.assertEqual(errors, [])
+        self.assertNotIn("empty-section", warnings)
+        self.assertNotIn("container-width-total", warnings)
+
+    def test_inner_section_widths_are_still_validated(self) -> None:
+        source = self.wrapped_native().replace('data-container-width="100"', 'data-container-width="75"', 1)
+        _, warnings = self.codes(source, "native")
+        self.assertIn("container-width-total", warnings)
+        errors, _ = self.codes(source.replace('data-container-width="75"', 'data-container-width="invalid"'), "native")
+        self.assertIn("container-width", errors)
+
+    def test_arbitrary_or_functional_wrappers_remain_errors(self) -> None:
+        for wrapper in ('<div class="ordinary-wrapper">', '<div class="innerSection" data-editorblocktype="Text">'):
+            with self.subTest(wrapper=wrapper):
+                errors, _ = self.codes(self.wrapped_native(wrapper), "native")
+                self.assertIn("container-parent", errors)
+
+    def test_multiple_inner_rows_have_separate_width_totals(self) -> None:
+        row = '<div class="innerSection"><div data-container="true" data-container-width="100"></div></div>'
+        source = VALID_NATIVE.replace('<div data-layout="true">', '<div data-layout="true"><div data-section="true">' + row + row + '</div>', 1)
+        errors, warnings = self.codes(source, "native")
+        self.assertEqual(errors, [])
+        self.assertNotIn("container-width-total", warnings)
+        changed = source.replace(row + row, row + row.replace('width="100"', 'width="50"'), 1)
+        _, warnings = self.codes(changed, "native")
+        self.assertEqual(warnings.count("container-width-total"), 1)
+
+    def native_groups(self, groups: str = DESIGNER_GROUPS) -> str:
+        return VALID_NATIVE.replace('<div data-container="true" data-container-width="100">',
+            '<div data-container="true" data-container-width="100">' + groups, 1)
+
+    def test_native_designer_group_labels_are_accessibility_warnings(self) -> None:
+        errors, warnings = self.codes(self.native_groups(), "native")
+        self.assertEqual(errors, [])
+        self.assertEqual(warnings.count("designer-group-label"), 2)
+
+    def test_missing_group_and_cross_block_targets_are_errors(self) -> None:
+        for target in ("missing-group", "contact-method"):
+            with self.subTest(target=target):
+                groups = DESIGNER_GROUPS.replace('for="industries"', f'for="{target}"', 1)
+                errors, _ = self.codes(self.native_groups(groups), "native")
+                self.assertIn("label-target", errors)
+
+    def test_group_exception_requires_labeled_native_choices(self) -> None:
+        cases = [
+            DESIGNER_GROUPS.replace('data-editorblocktype="MultiOptionSetFormField"', 'data-editorblocktype="Text"', 1),
+            DESIGNER_GROUPS.replace('type="checkbox"', 'type="text"', 1),
+            DESIGNER_GROUPS.replace('<label for="industry-tech">Technology</label>', ''),
+            DESIGNER_GROUPS.replace('class="block-label"', 'class="ordinary-label"', 1),
+        ]
+        for groups in cases:
+            with self.subTest(groups=groups):
+                errors, _ = self.codes(self.native_groups(groups), "native")
+                self.assertIn("label-target", errors)
+
+    def test_capture_group_labels_do_not_get_native_exception(self) -> None:
+        source = VALID_CAPTURE.replace('</form>', DESIGNER_GROUPS + '</form>', 1)
+        errors, warnings = self.codes(source, "capture")
+        self.assertEqual(errors.count("label-target"), 2)
+        self.assertNotIn("designer-group-label", warnings)
+
 
 class PreservationTests(unittest.TestCase):
     @classmethod
@@ -257,6 +343,29 @@ class PreservationTests(unittest.TestCase):
     def test_decorative_label_wrapper_and_added_classes_are_allowed(self) -> None:
         changed = self.styled.replace('>First name</label>', '><span class="label-copy">First name</span></label>')
         self.assertEqual(VALIDATOR.compare_native(self.original, changed), [])
+
+    def test_text_blocks_document_title_and_submit_wording_are_preserved(self) -> None:
+        cases = [
+            ('Let’s talk', 'Changed heading'),
+            ('Tell us a little about yourself and how we can help.', 'Changed descriptive text.'),
+            ('Send request', 'Changed submit wording'),
+            ('Contact form — regression fixture', 'Changed document title'),
+        ]
+        for before, after in cases:
+            with self.subTest(copy=before):
+                changed = self.styled.replace(before, after, 1)
+                self.assertNotEqual(changed, self.styled)
+                self.assertIn('source-text-changed', self.compare_codes(self.original, changed))
+
+    def test_decorative_text_wrapper_preserves_copy(self) -> None:
+        changed = self.styled.replace('<h1>Let’s talk</h1>', '<h1><span class="heading-copy">Let’s talk</span></h1>')
+        self.assertEqual(VALIDATOR.compare_native(self.original, changed), [])
+
+    def test_intact_containers_can_be_reordered(self) -> None:
+        pattern = r'<div class="columnContainer" data-container="true" data-container-width="50" id="container-(?:firstname|lastname)".*?</div>\s*</div>'
+        first, last = re.findall(pattern, self.styled, re.DOTALL)
+        reordered = self.styled.replace(first, 'CONTAINER_SWAP', 1).replace(last, first, 1).replace('CONTAINER_SWAP', last, 1)
+        self.assertEqual(VALIDATOR.compare_native(self.original, reordered), [])
 
     def test_generated_classes_cannot_be_removed(self) -> None:
         changed = self.styled.replace('class="textFormFieldBlock"', 'class="new-field-style"', 1)

@@ -150,7 +150,40 @@ def is_placeholder(value: str) -> bool:
     )
 
 
-def common_findings(inspector: Inspector, source: str) -> list[Finding]:
+def is_designer_group_label(inspector: Inspector, label_index: int) -> bool:
+    """Recognize native group headings without accepting arbitrary label targets."""
+    label = inspector.nodes[label_index]
+    if "block-label" not in class_names(label):
+        return False
+    parents = list(ancestors(inspector, label_index))
+    if not any(inspector.nodes[index].tag == "form"
+               and "marketingForm" in class_names(inspector.nodes[index]) for index in parents):
+        return False
+    block_index = next((index for index in parents
+                        if "data-editorblocktype" in inspector.nodes[index].attrs), None)
+    if block_index is None:
+        return False
+    block_type = inspector.nodes[block_index].attrs["data-editorblocktype"].lower()
+    if block_type not in {"multioptionsetformfield", "twooptionformfield", "optionsetformfield"}:
+        return False
+    target_index = next((index for index, node in enumerate(inspector.nodes)
+                         if node.attrs.get("id") == label.attrs.get("for")), None)
+    if target_index is None or not is_descendant(inspector, target_index, block_index):
+        return False
+    target = inspector.nodes[target_index]
+    if target.tag != "fieldset" and not (target.tag == "div" and "radiobuttons" in class_names(target)):
+        return False
+    group_nodes = descendants(inspector, target_index)
+    controls = [node for _, node in group_nodes if node.tag in CONTROL_TAGS]
+    expected_type = "checkbox" if block_type == "multioptionsetformfield" else "radio"
+    labels = {node.attrs.get("for") for _, node in group_nodes if node.tag == "label"}
+    return bool(controls) and all(
+        node.tag == "input" and node.attrs.get("type", "").lower() == expected_type
+        and node.attrs.get("id") and node.attrs["id"] in labels for node in controls
+    )
+
+
+def common_findings(inspector: Inspector, source: str, *, allow_designer_groups: bool = False) -> list[Finding]:
     findings: list[Finding] = []
     ids: dict[str, list[int]] = {}
     control_ids: set[str] = set()
@@ -199,18 +232,16 @@ def common_findings(inspector: Inspector, source: str) -> list[Finding]:
                 )
             )
 
-    for node in inspector.nodes:
+    for index, node in enumerate(inspector.nodes):
         if node.tag == "label" and node.attrs.get("for"):
             target = node.attrs["for"]
             if target not in control_ids:
-                findings.append(
-                    Finding(
-                        "error",
-                        "label-target",
-                        f"Label target {target!r} does not match a control ID.",
-                        node.line,
-                    )
-                )
+                if allow_designer_groups and is_designer_group_label(inspector, index):
+                    findings.append(Finding("warning", "designer-group-label",
+                        "Designer group heading references an existing choice container; individual option labels are intact. Check the group's accessible name in the published form.", node.line))
+                else:
+                    findings.append(Finding("error", "label-target",
+                        f"Label target {target!r} does not match a control ID.", node.line))
 
     lowered_source = source.lower()
     for marker in PLACEHOLDER_MARKERS:
@@ -227,7 +258,7 @@ def common_findings(inspector: Inspector, source: str) -> list[Finding]:
 
 
 def validate_native(inspector: Inspector, source: str) -> list[Finding]:
-    findings = common_findings(inspector, source)
+    findings = common_findings(inspector, source, allow_designer_groups=True)
     forms = [
         index
         for index, node in enumerate(inspector.nodes)
@@ -308,13 +339,26 @@ def validate_native(inspector: Inspector, source: str) -> list[Finding]:
                 node.line,
             ))
 
+    section_rows: dict[int, dict[int, list[Node]]] = {}
     for index in containers:
-        if inspector.nodes[index].parent not in sections:
+        parent_index = inspector.nodes[index].parent
+        section_index = parent_index if parent_index in sections else None
+        if section_index is None and parent_index is not None:
+            parent = inspector.nodes[parent_index]
+            if (parent.tag == "div" and "innerSection" in class_names(parent)
+                    and parent.parent in sections
+                    and not any(key in parent.attrs for key in (
+                        "data-layout", "data-section", "data-container",
+                        "data-editorblocktype", "data-targetproperty"))):
+                section_index = parent.parent
+        if section_index is None:
             findings.append(Finding(
                 "error", "container-parent",
-                "A data-container region must be a direct child of a data-section region.",
+                "A data-container region must belong directly to a data-section, or to its native div.innerSection row wrapper.",
                 inspector.nodes[index].line,
             ))
+        else:
+            section_rows.setdefault(section_index, {}).setdefault(parent_index, []).append(inspector.nodes[index])
 
     for section_index in sections:
         section = inspector.nodes[section_index]
@@ -329,45 +373,42 @@ def validate_native(inspector: Inspector, source: str) -> list[Finding]:
                     section.line,
                 )
             )
-        direct_containers = [
-            inspector.nodes[index]
-            for index in containers
-            if inspector.nodes[index].parent == section_index
-        ]
-        if not direct_containers:
+        rows = section_rows.get(section_index, {})
+        if not rows:
             findings.append(
                 Finding(
                     "warning",
                     "empty-section",
-                    "A data-section region has no direct data-container child.",
+                    "A data-section region has no direct or native innerSection data-container row.",
                     section.line,
                 )
             )
             continue
-        widths: list[float] = []
-        for container in direct_containers:
-            raw_width = container.attrs.get("data-container-width")
-            if raw_width:
-                try:
-                    widths.append(float(raw_width))
-                except ValueError:
-                    findings.append(
-                        Finding(
-                            "error",
-                            "container-width",
-                            f"Invalid data-container-width value {raw_width!r}.",
-                            container.line,
+        for row_containers in rows.values():
+            widths: list[float] = []
+            for container in row_containers:
+                raw_width = container.attrs.get("data-container-width")
+                if raw_width:
+                    try:
+                        widths.append(float(raw_width))
+                    except ValueError:
+                        findings.append(
+                            Finding(
+                                "error",
+                                "container-width",
+                                f"Invalid data-container-width value {raw_width!r}.",
+                                container.line,
+                            )
                         )
+            if widths and abs(sum(widths) - 100.0) > 0.1:
+                findings.append(
+                    Finding(
+                        "warning",
+                        "container-width-total",
+                        f"Row container widths total {sum(widths):g}, not 100.",
+                        section.line,
                     )
-        if widths and abs(sum(widths) - 100.0) > 0.1:
-            findings.append(
-                Finding(
-                    "warning",
-                    "container-width-total",
-                    f"Direct container widths total {sum(widths):g}, not 100.",
-                    section.line,
                 )
-            )
 
     mapped_blocks = [
         (index, node)
@@ -747,6 +788,20 @@ def compare_native(original: str, styled: str) -> list[Finding]:
     if classes(before) - classes(after):
         findings.append(Finding("error", "class-removed",
             "Existing classes were removed or moved from protected nodes. Keep generated CSS and JavaScript hooks; add styling classes instead."))
+
+    def copy_text(inspector: Inspector) -> Counter:
+        # Compare each source region independently so intact blocks can move and
+        # decorative wrappers can be added without changing their wording.
+        return Counter(
+            (node_key(inspector, index), " ".join(node.text.split()))
+            for index, node in enumerate(inspector.nodes)
+            if node.tag in {"title", "button"}
+            or node.attrs.get("data-editorblocktype", "").lower() == "text"
+        )
+
+    if copy_text(before) != copy_text(after):
+        findings.append(Finding("error", "source-text-changed",
+            "Generated text blocks, document title, or button wording changed. Preserve source copy during styling."))
 
     def options(inspector: Inspector) -> dict[str, list[dict]]:
         return {

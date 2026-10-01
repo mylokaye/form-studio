@@ -47,4 +47,8 @@ Record source findings before editing. A missing CAPTCHA, placeholder consent va
 
 The checker recognizes common field shapes and compares unknown metadata. It cannot determine whether a logical name exists, whether a control is supported in the selected audience, whether consent belongs to the selected compliance profile, or whether a CAPTCHA is operational. Dynamics acceptance and a recorded submission provide that evidence.
 
+Some generated choice-group headings use a `block-label` whose `for` points to a fieldset or radio container. When that container belongs to the same native field block and its individual choices have intact labels, the checker reports an accessibility warning instead of a missing-control error. Preserve the generated pattern and check the group's accessible name in Dynamics. Missing targets, cross-block references, and malformed groups remain errors.
+
+Saved/published rows can contain a `div.innerSection` between `data-section` and `data-container`. Preserve that native wrapper. The checker recognizes direct rows and this one-level wrapper and validates column-width totals per row; arbitrary or functional intervening blocks remain errors.
+
 Sources: [Microsoft form customization and validation](https://learn.microsoft.com/en-us/dynamics365/customer-insights/journeys/real-time-marketing-manage-forms), [div-based layouts](https://learn.microsoft.com/en-us/troubleshoot/dynamics-365/customer-insights/journeys/forms/troubleshooting-forms), [unmapped fields](https://learn.microsoft.com/en-us/dynamics365/customer-insights/journeys/real-time-marketing-forms-custom-fields).

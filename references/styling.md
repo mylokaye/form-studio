@@ -23,7 +23,23 @@ form.marketingForm.d365-styled button {
 }
 ```
 
-The class and colors are illustrative. Do not force this preset onto a different requested design. Use `!important` narrowly when an observed generated rule or inline visual value requires it; verify the computed result. Keep the original block and its controls instead of replacing them with custom controls.
+The colors are illustrative. Do not force them onto a different requested design. Use `!important` narrowly when an observed generated rule or inline visual value requires it; verify the computed result. Keep the original block and its controls instead of replacing them with custom controls.
+
+## Shared spacing
+
+Inline [assets/form-spacing.css](../assets/form-spacing.css) into the new override style, after its font import and other visual rules. Add the `d365-styled` form class. This is the skill's default spacing design, not a Dynamics platform requirement. Keep the asset's defaults for every output unless the user supplies a different spacing reference; override its form-scoped tokens after the preset when needed.
+
+| Relationship | Default |
+| --- | --- |
+| Label to control | 8px |
+| Field block to next field | 24px |
+| Desktop columns | 24px |
+| Radio/checkbox choices | 10px |
+| Consent blocks | 12px |
+
+Dynamics can wrap a saved row's columns in `.innerSection`, inside `[data-section="true"]`. A gap on the outer section alone then has no effect between the columns. The preset covers both row shapes and stacks both at its mobile breakpoint. Verify the **actual control edges** have the intended gap, rather than checking only that a CSS `column-gap` property exists.
+
+Budget the gap within the available row width. Override generated fixed visual widths/flex bases when necessary without changing metadata. Preserve unequal column proportions: derive flex weights from `data-container-width` (or the inspected source) and set styling custom properties, rather than making every column equal. The preset deliberately does not choose desktop widths, proportions, colors or card dimensions. Adapt its breakpoint if the source's column count or geometry needs earlier stacking. Keep hidden blocks hidden; their margins must not create visible gaps.
 
 ## Responsive geometry
 
@@ -32,6 +48,7 @@ Generated container percentages can become fixed inline `width` and `flex-basis`
 - Budget card borders/padding outside the actual layout width, or use narrowly scoped responsive overrides that keep content within the available width.
 - Retain generated IDs and layout metadata. At a narrow breakpoint, a scoped rule can stack the existing div columns and override fixed inline visual widths/flex bases without changing field ownership. Derive the breakpoint from the reference and actual geometry.
 - Test at a desktop width, 375px, and 320px. Check every visible control's edges and `document.documentElement.scrollWidth <= document.documentElement.clientWidth`.
+- Check computed control font sizes at mobile widths. A more specific generated or base selector can defeat a later media rule; verify that the intended override actually applies.
 - Verify after Dynamics saves and publishes, since it can materialize different inline values. A passing local export is only local evidence.
 
 Do not hide overflow to mask an oversized form. Do not clip or hide required controls. Prefer readable labels above controls; use floating labels only when empty, populated, focused, autofilled, validation, zoom, and mobile states have been checked.

@@ -20,14 +20,16 @@ The skill keeps its existing invocation name, `$d365-customer-insights-forms`. I
 
 The supplied form owns its fields and behavior: generated IDs/classes, mapped and unmapped controls, target metadata, label associations, required/validation settings, choices/defaults, hidden values, consent, CAPTCHA, original stylesheets, and scripts. New styling uses scoped CSS and div containers. Table-based form layouts require re-exporting from Dynamics with its table-less layout enabled.
 
-The source-comparison checker detects changed functional attributes/ownership, added or removed controls, duplicate field blocks, layout tables, changed scripts, and edited or reordered original stylesheets. It flags common unscoped new CSS. Existing source issues are reported separately from styling regressions. Browser checks must still verify geometry, cascade, accessibility, and validation presentation.
+The source-comparison checker detects changed functional attributes/ownership, generated Text-block copy, document title, button wording, added or removed controls, duplicate field blocks, layout tables, changed scripts, and edited or reordered original stylesheets. It flags common unscoped new CSS. Existing source issues are reported separately from styling regressions. Known native choice-group headings with intact option labels produce accessibility warnings; genuinely broken targets remain errors. Browser checks must still verify geometry, cascade, accessibility, and validation presentation.
+
+Every output uses the shared [Form Studio spacing preset](assets/form-spacing.css): 8px between labels and controls, 24px between fields and desktop columns, 10px between choices, and 12px between consent blocks. It handles direct exported columns and the `.innerSection` wrappers Dynamics can add when saving. A requested design can override these form-scoped tokens.
 
 ## Repository structure
 
 ```text
 SKILL.md                       Active workflow and constraints
 agents/openai.yaml             Discovery/UI metadata
-assets/                        Plugin icon and README banner
+assets/                        Plugin imagery and reusable spacing CSS
 references/
   html-contract.md             Preserve generated HTML and behavior
   styling.md                   Scoped CSS, fonts, mobile, accessibility

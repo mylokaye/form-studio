@@ -19,13 +19,19 @@ The JSON report separates:
 
 Exit status is nonzero for introduced or remaining source errors. `--strict` also fails on warnings, including existing warnings. Review source warnings without treating them as styling regressions. Do not label an output ready for publishing while blocking source issues remain.
 
-Comparison protects nonvisual attributes and ownership of functional nodes, generated classes, label/choice text, options and defaults, scripts/order, original styles, and the doctype. It allows additional styling classes, inline visual values, scoped override styles, and ordinary decorative wrappers without functional metadata. Reordering intact field blocks can pass; moving a control between blocks does not. Check keyboard order after any visual rearrangement.
+Comparison protects nonvisual attributes and ownership of functional nodes, generated classes, label/choice text, generated Text-block copy, document title, button wording, options and defaults, scripts/order, original styles, and the doctype. It allows additional styling classes, inline visual values, scoped override styles, and ordinary decorative wrappers without functional metadata. Reordering intact field blocks can pass; moving a control between blocks does not. Check keyboard order after any visual rearrangement.
 
 The checker is a conservative DOM/attribute preflight. It is not a browser HTML conformance validator, full CSS parser, Dataverse schema validator, JavaScript runtime test, or CAPTCHA/service test. Its CSS warnings catch common unscoped selectors; inspect complex CSS manually. CSS can affect behavior without changing an attribute, so browser checks remain necessary.
 
 Render desktop, 375px, and 320px widths. Inspect overflow, each control's bounds, label wrapping, font loading/fallback, consent text, focus, native required/format validation, and 200% zoom. Verify unrelated host content keeps its styles. Use synthetic data. Do not send real submissions from a local fixture or unknown production form.
 
+Measure the visible gaps against the spacing preset: columns, successive field blocks and label-to-control spacing. Check both direct-column exports and saved rows with `.innerSection` wrappers. After Dynamics saves/publishes, inspect the actual row containing the columns; an outer wrapper's computed gap alone does not prove separation.
+
+Report native browser zoom separately from CSS zoom or device emulation. If only a simulated scaling/reflow check was possible, identify that method and leave native zoom unverified.
+
 Any local submit interception belongs in a separate preview harness. The paste-back document must retain its Dynamics-managed submission path and original scripts. Never show simulated success in that document.
+
+For a preview iframe that adjusts its height, measure the rendered form/content bounds rather than adding padding to the iframe document's viewport height. Observing that viewport-derived height can create a feedback loop and an ever-growing blank preview. Keep preview body resets and any emulation of Dynamics hidden-field presentation in the harness, with their limits stated.
 
 ## Deliverables and paste-back
 
